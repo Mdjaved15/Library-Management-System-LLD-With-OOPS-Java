@@ -1,0 +1,200 @@
+import java.util.*;
+class Book {
+    private String title;
+    private String author;
+    private String ISBN;
+    private String category;
+
+    public Book(String title, String author, String ISBN, String category) {
+        this.title = title;
+        this.author = author;
+        this.ISBN = ISBN;
+        this.category = category;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+}
+class BookItem {
+    private Book book;
+    private String barcode;
+    private boolean isAvailable;
+    private Date dueDate;
+
+    public BookItem(Book book, String barcode, boolean isAvailable, Date dueDate) {
+        this.book = book;
+        this.barcode = barcode;
+        this.isAvailable = isAvailable;
+        this.dueDate = dueDate;
+    }
+
+    public Book getBook() {
+        return book;
+    }
+
+    public boolean isAvailable() {
+        return isAvailable;
+    }
+
+    public void setAvailable(boolean available) {
+        this.isAvailable = available;
+    }
+
+    public Date getDueDate() {
+        return dueDate;
+    }
+
+    public void setDueDate(Date dueDate) {
+        this.dueDate = dueDate;
+    }
+}
+abstract class User {
+    protected String userId;
+    protected String name;
+    protected String email;
+
+    public User(String userId, String name, String email) {
+        this.userId = userId;
+        this.name = name;
+        this.email = email;
+    }
+
+    public abstract void showUserDetails();
+}
+class Member extends User {
+    private List<BookItem> issuedBooks = new ArrayList<>();
+
+    public Member(String userId, String name, String email) {
+        super(userId, name, email);
+    }
+
+    public void borrowBook(BookItem book) {
+        if (book.isAvailable()) {
+            issuedBooks.add(book);
+            book.setAvailable(false);
+            System.out.println(name + " borrowed: " + book.getBook().getTitle());
+        } else {
+            System.out.println("Book is not available.");
+        }
+    }
+
+    public void returnBook(BookItem book) {
+        if (issuedBooks.remove(book)) {
+            book.setAvailable(true);
+            System.out.println(name + " returned: " + book.getBook().getTitle());
+        } else {
+            System.out.println("You haven't borrowed this book.");
+        }
+    }
+
+    public List<BookItem> getIssuedBooks() {
+        return issuedBooks;
+    }
+
+    @Override
+    public void showUserDetails() {
+        System.out.println("Member: " + name);
+    }
+}
+class Library {
+    private List<BookItem> books = new ArrayList<>();
+    private List<Member> members = new ArrayList<>();
+
+    public void addBook(BookItem bookItem) {
+        books.add(bookItem);
+    }
+
+    public void registerMember(Member member) {
+        members.add(member);
+    }
+
+    public BookItem searchBook(String title) {
+        for (BookItem book : books) {
+            if (book.getBook().getTitle().equalsIgnoreCase(title)) {
+                return book;
+            }
+        }
+        return null;
+    }
+
+    public void issueBook(BookItem bookItem, Member member) {
+        member.borrowBook(bookItem);
+    }
+
+    public void returnBook(BookItem bookItem, Member member) {
+        member.returnBook(bookItem);
+    }
+
+    public void listBooks() {
+        System.out.println("\nAvailable Books:");
+        for (BookItem book : books) {
+            System.out.println("- " + book.getBook().getTitle() + " [" + (book.isAvailable() ? "Available" : "Not Available") + "]");
+        }
+    }
+}
+public class Main {
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+
+        Library library = new Library();
+        Member member = new Member("M001", "Md Javed", "javedmd@example.com");
+        library.registerMember(member);
+
+        library.addBook(new BookItem(new Book("Java Basics", "John Doe", "ISBN001", "Programming"), "B001", true, null));
+        library.addBook(new BookItem(new Book("Python Essentials", "Jane Smith", "ISBN002", "Programming"), "B002", true, null));
+        library.addBook(new BookItem(new Book("DBMS Concepts", "E.F. Codd", "ISBN003", "Database"), "B003", true, null));
+        library.addBook(new BookItem(new Book("Operating Systems", "Silberschatz", "ISBN004", "Computer Science"), "B004", true, null));
+        library.addBook(new BookItem(new Book("Data Structures", "Mark Allen", "ISBN005", "Computer Science"), "B005", true, null));
+        library.addBook(new BookItem(new Book("Algorithms", "CLRS", "ISBN006", "Computer Science"), "B006", true, null));
+        library.addBook(new BookItem(new Book("Computer Networks", "Andrew Tanenbaum", "ISBN007", "Networking"), "B007", true, null));
+        library.addBook(new BookItem(new Book("Artificial Intelligence", "Stuart Russell", "ISBN008", "AI"), "B008", true, null));
+        library.addBook(new BookItem(new Book("Machine Learning", "Tom Mitchell", "ISBN009", "AI"), "B009", true, null));
+        library.addBook(new BookItem(new Book("Cloud Computing", "Rajkumar Buyya", "ISBN010", "Cloud"), "B010", true, null));
+
+        int choice;
+        do {
+            System.out.println("\n====== Library Menu ======");
+            System.out.println("1. View Books");
+            System.out.println("2. Borrow Book");
+            System.out.println("3. Return Book");
+            System.out.println("4. Exit");
+            System.out.print("Enter choice: ");
+            choice = sc.nextInt();
+            sc.nextLine(); 
+
+            switch (choice) {
+                case 1:
+                    library.listBooks();
+                    break;
+                case 2:
+                    System.out.print("Enter book title to borrow: ");
+                    String borrowTitle = sc.nextLine();
+                    BookItem borrowBook = library.searchBook(borrowTitle);
+                    if (borrowBook != null) {
+                        library.issueBook(borrowBook, member);
+                    } else {
+                        System.out.println("Book not found.");
+                    }
+                    break;
+                case 3:
+                    System.out.print("Enter book title to return: ");
+                    String returnTitle = sc.nextLine();
+                    BookItem returnBook = library.searchBook(returnTitle);
+                    if (returnBook != null) {
+                        library.returnBook(returnBook, member);
+                    } else {
+                        System.out.println("Book not found.");
+                    }
+                    break;
+                case 4:
+                    System.out.println("Exiting system. Goodbye!");
+                    break;
+                default:
+                    System.out.println("Invalid choice.");
+            }
+        } while (choice != 4);
+
+        sc.close();
+    }
+}
