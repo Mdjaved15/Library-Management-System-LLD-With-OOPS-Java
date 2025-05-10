@@ -1,5 +1,6 @@
 import java.util.*;
 
+// Book class
 class Book {
     private String title, author, ISBN, category;
 
@@ -15,17 +16,16 @@ class Book {
     }
 }
 
+// BookItem class
 class BookItem {
     private Book book;
     private String barcode;
     private boolean isAvailable;
-    private Date dueDate;
 
-    public BookItem(Book book, String barcode, boolean isAvailable, Date dueDate) {
+    public BookItem(Book book, String barcode, boolean isAvailable) {
         this.book = book;
         this.barcode = barcode;
         this.isAvailable = isAvailable;
-        this.dueDate = dueDate;
     }
 
     public Book getBook() {
@@ -41,6 +41,7 @@ class BookItem {
     }
 }
 
+// Abstract User
 abstract class User {
     protected String userId, name, email;
 
@@ -53,6 +54,7 @@ abstract class User {
     public abstract void showUserDetails();
 }
 
+// Member class
 class Member extends User {
     private String password;
     private List<BookItem> issuedBooks = new ArrayList<>();
@@ -91,9 +93,43 @@ class Member extends User {
     }
 }
 
+// Admin class
+class Admin extends User {
+    private String password;
+
+    public Admin(String userId, String name, String email, String password) {
+        super(userId, name, email);
+        this.password = password;
+    }
+
+    public boolean verify(String inputPassword) {
+        return this.password.equals(inputPassword);
+    }
+
+    @Override
+    public void showUserDetails() {
+        System.out.println("Admin: " + name + " (ID: " + userId + ")");
+    }
+
+    public void addBook(Library library, BookItem bookItem) {
+        library.addBook(bookItem);
+        System.out.println("Book added to library.");
+    }
+
+    public void viewMembers(Library library) {
+        library.viewAllMembers();
+    }
+
+    public void viewBooks(Library library) {
+        library.listBooks();
+    }
+}
+
+// Library class
 class Library {
     private List<BookItem> books = new ArrayList<>();
     private Map<String, Member> members = new HashMap<>();
+    private Map<String, Admin> admins = new HashMap<>();
 
     public void addBook(BookItem bookItem) {
         books.add(bookItem);
@@ -103,15 +139,29 @@ class Library {
         members.put(member.userId, member);
     }
 
-    public boolean userExists(String userId) {
+    public void registerAdmin(Admin admin) {
+        admins.put(admin.userId, admin);
+    }
+
+    public boolean memberExists(String userId) {
         return members.containsKey(userId);
     }
 
-    public Member login(String userId, String password) {
+    public Member loginMember(String userId, String password) {
         if (members.containsKey(userId)) {
             Member member = members.get(userId);
             if (member.verify(password)) {
                 return member;
+            }
+        }
+        return null;
+    }
+
+    public Admin loginAdmin(String userId, String password) {
+        if (admins.containsKey(userId)) {
+            Admin admin = admins.get(userId);
+            if (admin.verify(password)) {
+                return admin;
             }
         }
         return null;
@@ -132,16 +182,29 @@ class Library {
             System.out.println("- " + book.getBook().getTitle() + " [" + (book.isAvailable() ? "Available" : "Not Available") + "]");
         }
     }
+
+    public void viewAllMembers() {
+        System.out.println("\nRegistered Members:");
+        for (Member m : members.values()) {
+            m.showUserDetails();
+        }
+    }
 }
 
+// Main class
 public class Main {
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
         Library library = new Library();
 
+        // Pre-register members
         library.registerMember(new Member("S001", "Alice", "alice@mail.com", "pass123"));
         library.registerMember(new Member("S002", "Bob", "bob@mail.com", "bobpass"));
 
+        // Pre-register admin
+        library.registerAdmin(new Admin("A001", "Md Javed", "mdjaved152004@library.com", "mdjaved123"));
+
+        // Add 10 books
         String[][] books = {
             {"Java Basics", "John Doe", "ISBN001", "Programming"},
             {"Python Essentials", "Jane Smith", "ISBN002", "Programming"},
@@ -157,35 +220,36 @@ public class Main {
 
         for (int i = 0; i < books.length; i++) {
             Book b = new Book(books[i][0], books[i][1], books[i][2], books[i][3]);
-            library.addBook(new BookItem(b, "B" + (i + 1), true, null));
+            library.addBook(new BookItem(b, "B" + (i + 1), true));
         }
 
-        Member loggedInUser = null;
-
-        while (loggedInUser == null) {
+        while (true) {
             System.out.println("\n==== Welcome to the Library ====");
-            System.out.println("1. Login");
-            System.out.println("2. Register");
-            System.out.println("3. Exit");
+            System.out.println("1. Member Login");
+            System.out.println("2. Register Member");
+            System.out.println("3. Admin Login");
+            System.out.println("4. Exit");
             System.out.print("Choose option: ");
             int option = sc.nextInt();
             sc.nextLine();
 
             if (option == 1) {
-                System.out.print("Enter User ID: ");
+                System.out.print("Enter Member ID: ");
                 String userId = sc.nextLine();
                 System.out.print("Enter Password: ");
                 String password = sc.nextLine();
 
-                loggedInUser = library.login(userId, password);
-                if (loggedInUser == null) {
-                    System.out.println("Login failed. Try again.");
+                Member member = library.loginMember(userId, password);
+                if (member != null) {
+                    handleMemberMenu(member, library, sc);
+                } else {
+                    System.out.println("Invalid member credentials.");
                 }
 
             } else if (option == 2) {
-                System.out.print("Enter New User ID: ");
+                System.out.print("Enter New Member ID: ");
                 String newId = sc.nextLine();
-                if (library.userExists(newId)) {
+                if (library.memberExists(newId)) {
                     System.out.println("User ID already exists. Try again.");
                     continue;
                 }
@@ -197,22 +261,38 @@ public class Main {
                 System.out.print("Enter Password: ");
                 String newPassword = sc.nextLine();
 
-                loggedInUser = new Member(newId, newName, newEmail, newPassword);
-                library.registerMember(loggedInUser);
-                System.out.println("Registration successful. You are now logged in.");
+                Member newMember = new Member(newId, newName, newEmail, newPassword);
+                library.registerMember(newMember);
+                System.out.println("Registration successful. You can now log in.");
 
             } else if (option == 3) {
+                System.out.print("Enter Admin ID: ");
+                String adminId = sc.nextLine();
+                System.out.print("Enter Password: ");
+                String adminPassword = sc.nextLine();
+
+                Admin admin = library.loginAdmin(adminId, adminPassword);
+                if (admin != null) {
+                    handleAdminMenu(admin, library, sc);
+                } else {
+                    System.out.println("Invalid admin credentials.");
+                }
+
+            } else if (option == 4) {
                 System.out.println("Exiting... Goodbye!");
-                sc.close();
-                return;
+                break;
             } else {
                 System.out.println("Invalid option.");
             }
         }
 
+        sc.close();
+    }
+
+    static void handleMemberMenu(Member user, Library library, Scanner sc) {
         int choice;
         do {
-            System.out.println("\n====== Library Menu ======");
+            System.out.println("\n=== Member Menu ===");
             System.out.println("1. View Books");
             System.out.println("2. Borrow Book");
             System.out.println("3. Return Book");
@@ -230,7 +310,7 @@ public class Main {
                     String borrowTitle = sc.nextLine();
                     BookItem borrowBook = library.searchBook(borrowTitle);
                     if (borrowBook != null) {
-                        loggedInUser.borrowBook(borrowBook);
+                        user.borrowBook(borrowBook);
                     } else {
                         System.out.println("Book not found.");
                     }
@@ -240,15 +320,54 @@ public class Main {
                     String returnTitle = sc.nextLine();
                     BookItem returnBook = library.searchBook(returnTitle);
                     if (returnBook != null) {
-                        loggedInUser.returnBook(returnBook);
+                        user.returnBook(returnBook);
                     } else {
                         System.out.println("Book not found.");
                     }
                     break;
                 case 4:
                     System.out.println("Logging out...");
-                    loggedInUser = null;
-                    main(null); 
+                    return;
+                default:
+                    System.out.println("Invalid choice.");
+            }
+        } while (choice != 4);
+    }
+
+    static void handleAdminMenu(Admin admin, Library library, Scanner sc) {
+        int choice;
+        do {
+            System.out.println("\n=== Admin Menu ===");
+            System.out.println("1. View Books");
+            System.out.println("2. Add Book");
+            System.out.println("3. View Members");
+            System.out.println("4. Logout");
+            System.out.print("Enter choice: ");
+            choice = sc.nextInt();
+            sc.nextLine();
+
+            switch (choice) {
+                case 1:
+                    admin.viewBooks(library);
+                    break;
+                case 2:
+                    System.out.print("Enter Book Title: ");
+                    String title = sc.nextLine();
+                    System.out.print("Enter Author: ");
+                    String author = sc.nextLine();
+                    System.out.print("Enter ISBN: ");
+                    String isbn = sc.nextLine();
+                    System.out.print("Enter Category: ");
+                    String category = sc.nextLine();
+                    Book book = new Book(title, author, isbn, category);
+                    BookItem bookItem = new BookItem(book, "B" + new Random().nextInt(1000), true);
+                    admin.addBook(library, bookItem);
+                    break;
+                case 3:
+                    admin.viewMembers(library);
+                    break;
+                case 4:
+                    System.out.println("Logging out...");
                     return;
                 default:
                     System.out.println("Invalid choice.");
