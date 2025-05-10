@@ -1,9 +1,7 @@
 import java.util.*;
+
 class Book {
-    private String title;
-    private String author;
-    private String ISBN;
-    private String category;
+    private String title, author, ISBN, category;
 
     public Book(String title, String author, String ISBN, String category) {
         this.title = title;
@@ -16,6 +14,7 @@ class Book {
         return title;
     }
 }
+
 class BookItem {
     private Book book;
     private String barcode;
@@ -40,19 +39,10 @@ class BookItem {
     public void setAvailable(boolean available) {
         this.isAvailable = available;
     }
-
-    public Date getDueDate() {
-        return dueDate;
-    }
-
-    public void setDueDate(Date dueDate) {
-        this.dueDate = dueDate;
-    }
 }
+
 abstract class User {
-    protected String userId;
-    protected String name;
-    protected String email;
+    protected String userId, name, email;
 
     public User(String userId, String name, String email) {
         this.userId = userId;
@@ -62,11 +52,18 @@ abstract class User {
 
     public abstract void showUserDetails();
 }
+
 class Member extends User {
+    private String password;
     private List<BookItem> issuedBooks = new ArrayList<>();
 
-    public Member(String userId, String name, String email) {
+    public Member(String userId, String name, String email, String password) {
         super(userId, name, email);
+        this.password = password;
+    }
+
+    public boolean verify(String inputPassword) {
+        return this.password.equals(inputPassword);
     }
 
     public void borrowBook(BookItem book) {
@@ -88,25 +85,36 @@ class Member extends User {
         }
     }
 
-    public List<BookItem> getIssuedBooks() {
-        return issuedBooks;
-    }
-
     @Override
     public void showUserDetails() {
-        System.out.println("Member: " + name);
+        System.out.println("Member: " + name + " (ID: " + userId + ")");
     }
 }
+
 class Library {
     private List<BookItem> books = new ArrayList<>();
-    private List<Member> members = new ArrayList<>();
+    private Map<String, Member> members = new HashMap<>();
 
     public void addBook(BookItem bookItem) {
         books.add(bookItem);
     }
 
     public void registerMember(Member member) {
-        members.add(member);
+        members.put(member.userId, member);
+    }
+
+    public boolean userExists(String userId) {
+        return members.containsKey(userId);
+    }
+
+    public Member login(String userId, String password) {
+        if (members.containsKey(userId)) {
+            Member member = members.get(userId);
+            if (member.verify(password)) {
+                return member;
+            }
+        }
+        return null;
     }
 
     public BookItem searchBook(String title) {
@@ -118,14 +126,6 @@ class Library {
         return null;
     }
 
-    public void issueBook(BookItem bookItem, Member member) {
-        member.borrowBook(bookItem);
-    }
-
-    public void returnBook(BookItem bookItem, Member member) {
-        member.returnBook(bookItem);
-    }
-
     public void listBooks() {
         System.out.println("\nAvailable Books:");
         for (BookItem book : books) {
@@ -133,24 +133,82 @@ class Library {
         }
     }
 }
+
 public class Main {
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
-
         Library library = new Library();
-        Member member = new Member("M001", "Md Javed", "javedmd@example.com");
-        library.registerMember(member);
 
-        library.addBook(new BookItem(new Book("Java Basics", "John Doe", "ISBN001", "Programming"), "B001", true, null));
-        library.addBook(new BookItem(new Book("Python Essentials", "Jane Smith", "ISBN002", "Programming"), "B002", true, null));
-        library.addBook(new BookItem(new Book("DBMS Concepts", "E.F. Codd", "ISBN003", "Database"), "B003", true, null));
-        library.addBook(new BookItem(new Book("Operating Systems", "Silberschatz", "ISBN004", "Computer Science"), "B004", true, null));
-        library.addBook(new BookItem(new Book("Data Structures", "Mark Allen", "ISBN005", "Computer Science"), "B005", true, null));
-        library.addBook(new BookItem(new Book("Algorithms", "CLRS", "ISBN006", "Computer Science"), "B006", true, null));
-        library.addBook(new BookItem(new Book("Computer Networks", "Andrew Tanenbaum", "ISBN007", "Networking"), "B007", true, null));
-        library.addBook(new BookItem(new Book("Artificial Intelligence", "Stuart Russell", "ISBN008", "AI"), "B008", true, null));
-        library.addBook(new BookItem(new Book("Machine Learning", "Tom Mitchell", "ISBN009", "AI"), "B009", true, null));
-        library.addBook(new BookItem(new Book("Cloud Computing", "Rajkumar Buyya", "ISBN010", "Cloud"), "B010", true, null));
+        library.registerMember(new Member("S001", "Alice", "alice@mail.com", "pass123"));
+        library.registerMember(new Member("S002", "Bob", "bob@mail.com", "bobpass"));
+
+        String[][] books = {
+            {"Java Basics", "John Doe", "ISBN001", "Programming"},
+            {"Python Essentials", "Jane Smith", "ISBN002", "Programming"},
+            {"DBMS Concepts", "E.F. Codd", "ISBN003", "Database"},
+            {"Operating Systems", "Silberschatz", "ISBN004", "CS"},
+            {"Data Structures", "Mark Allen", "ISBN005", "CS"},
+            {"Algorithms", "CLRS", "ISBN006", "CS"},
+            {"Computer Networks", "Tanenbaum", "ISBN007", "Networking"},
+            {"AI", "Stuart Russell", "ISBN008", "AI"},
+            {"ML", "Tom Mitchell", "ISBN009", "AI"},
+            {"Cloud Computing", "Buyya", "ISBN010", "Cloud"}
+        };
+
+        for (int i = 0; i < books.length; i++) {
+            Book b = new Book(books[i][0], books[i][1], books[i][2], books[i][3]);
+            library.addBook(new BookItem(b, "B" + (i + 1), true, null));
+        }
+
+        Member loggedInUser = null;
+
+        while (loggedInUser == null) {
+            System.out.println("\n==== Welcome to the Library ====");
+            System.out.println("1. Login");
+            System.out.println("2. Register");
+            System.out.println("3. Exit");
+            System.out.print("Choose option: ");
+            int option = sc.nextInt();
+            sc.nextLine();
+
+            if (option == 1) {
+                System.out.print("Enter User ID: ");
+                String userId = sc.nextLine();
+                System.out.print("Enter Password: ");
+                String password = sc.nextLine();
+
+                loggedInUser = library.login(userId, password);
+                if (loggedInUser == null) {
+                    System.out.println("Login failed. Try again.");
+                }
+
+            } else if (option == 2) {
+                System.out.print("Enter New User ID: ");
+                String newId = sc.nextLine();
+                if (library.userExists(newId)) {
+                    System.out.println("User ID already exists. Try again.");
+                    continue;
+                }
+
+                System.out.print("Enter Name: ");
+                String newName = sc.nextLine();
+                System.out.print("Enter Email: ");
+                String newEmail = sc.nextLine();
+                System.out.print("Enter Password: ");
+                String newPassword = sc.nextLine();
+
+                loggedInUser = new Member(newId, newName, newEmail, newPassword);
+                library.registerMember(loggedInUser);
+                System.out.println("Registration successful. You are now logged in.");
+
+            } else if (option == 3) {
+                System.out.println("Exiting... Goodbye!");
+                sc.close();
+                return;
+            } else {
+                System.out.println("Invalid option.");
+            }
+        }
 
         int choice;
         do {
@@ -158,10 +216,10 @@ public class Main {
             System.out.println("1. View Books");
             System.out.println("2. Borrow Book");
             System.out.println("3. Return Book");
-            System.out.println("4. Exit");
+            System.out.println("4. Logout");
             System.out.print("Enter choice: ");
             choice = sc.nextInt();
-            sc.nextLine(); 
+            sc.nextLine();
 
             switch (choice) {
                 case 1:
@@ -172,7 +230,7 @@ public class Main {
                     String borrowTitle = sc.nextLine();
                     BookItem borrowBook = library.searchBook(borrowTitle);
                     if (borrowBook != null) {
-                        library.issueBook(borrowBook, member);
+                        loggedInUser.borrowBook(borrowBook);
                     } else {
                         System.out.println("Book not found.");
                     }
@@ -182,19 +240,19 @@ public class Main {
                     String returnTitle = sc.nextLine();
                     BookItem returnBook = library.searchBook(returnTitle);
                     if (returnBook != null) {
-                        library.returnBook(returnBook, member);
+                        loggedInUser.returnBook(returnBook);
                     } else {
                         System.out.println("Book not found.");
                     }
                     break;
                 case 4:
-                    System.out.println("Exiting system. Goodbye!");
-                    break;
+                    System.out.println("Logging out...");
+                    loggedInUser = null;
+                    main(null); 
+                    return;
                 default:
                     System.out.println("Invalid choice.");
             }
         } while (choice != 4);
-
-        sc.close();
     }
 }
